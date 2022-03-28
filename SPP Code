@@ -1,0 +1,784 @@
+#include <LiquidCrystal_I2C.h>
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// set pin numbers:
+const int buttonPin1 = 8;     // the number of the pushbutton1 pin
+const int buttonPin2 = 7;    // the number of the pushbutton2 pin
+const int buttonPin3 = 6;  // the number of the pushbutton3 pin
+const int ledPin1 =11;        // the number of the LED1 anode(+) pin
+const int ledPin2 = 12;   // the number of the LED2 anode(+) pin
+
+// Variables will change:
+int ledState1 = LOW;         // the current state of the LED1
+int ledState2 = LOW;         // the current state of the LED2
+int buttonState1;             // the current reading from the input pin1
+int buttonState2;             // the current reading from the input pin2
+int buttonState3;             // the current reading from the input pin3
+int lastButtonState1 = LOW;    // the previous reading from the input pin1
+int lastButtonState2 = LOW;    // the previous reading from the input pin2
+int lastButtonState3 = LOW;   // the previous reading from the input pin2
+
+
+unsigned long lastDebounceTime = 0;   // the last time the output pin was toggled
+long debounceDelay = 20000;           // the debounce time in micro second
+
+unsigned long randNumber;                 // Generated random number
+unsigned long minRandomNumber = 1000;     // minimum number used to specify the range of random number
+unsigned long maxRandomNumber = 3000;    // maximum number used to specify the range of random number
+
+unsigned long time1,time2;
+int button3Pressed = LOW;
+int printcount = 0;
+
+int takeReading = LOW;
+
+//following variable help in reading buttons pins
+int reading1;
+int reading2;
+int reading3;
+
+//following variable help in reading button corresponding to perticular led i.e LED1 --> BUTTON1 and LED2 --> BUTTON2
+int oddNumber ;
+int evenNumber ;
+
+//to initiate the next loop
+int nextLoop;
+
+//average of all arrays
+int setSpeed;
+int speeds[5] = {0,0,0,0,0};
+int avgSpeed;
+
+//loop
+int loopFinished;
+int startLoop = 0;
+
+//delay fix
+int fix = 0;
+
+void setup()
+{
+    // set up the LCD's number of columns and rows:
+    lcd.begin();
+    
+    // Print a message to the LCD.
+      pinMode(buttonPin1, INPUT);
+      pinMode(buttonPin2, INPUT);
+      pinMode(buttonPin3, INPUT);
+      pinMode(ledPin1, OUTPUT);
+      pinMode(ledPin2, OUTPUT);
+      
+
+      //enabling serial communication
+      Serial.begin(115200);
+      
+      // set initial LED state
+      digitalWrite(ledPin1, LOW);
+      digitalWrite(ledPin2, LOW);
+
+      randomSeed(analogRead(0));
+}
+
+void loop() 
+{
+
+    if(startLoop == 0){  
+      if( printcount == 0)
+      {
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          lcd.print("Press Start");
+          lcd.setCursor(0,1);
+          lcd.print("To Begin");
+          Serial.println("Press Start To Begin");
+          takeReading = LOW;    // not to read button number 1 and 2
+          oddNumber = LOW;
+          evenNumber = LOW;
+          printcount = 1;
+
+      }
+      
+      if(button3Pressed == HIGH && fix == 0)
+      {
+          fix = 1;
+          lcd.clear();
+          lcd.setCursor(2,0);
+          lcd.print("Press Gas");
+          lcd.setCursor(2,1);
+          lcd.print("When Green");
+          delay(2500);
+          lcd.clear();
+          lcd.setCursor(2,0);
+          lcd.print("Press Brake");
+          lcd.setCursor(3,1);
+          lcd.print("When Red");
+          delay(2500);
+          lcd.clear();
+          lcd.setCursor(5,0);
+          lcd.print("Shift");
+          lcd.setCursor(3,1);
+          lcd.print("When Told");
+          delay(2500);
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Brake Light");
+          lcd.setCursor(0,1);
+          lcd.print("v");
+          delay(2500);
+          lcd.clear();
+          lcd.setCursor(1,0);
+          lcd.print("Start / Shift");
+          lcd.setCursor(7,1);
+          lcd.print("v");
+          delay(2500);
+          lcd.clear();
+          lcd.setCursor(5,0);
+          lcd.print("Green Light");
+          lcd.setCursor(15,1);
+          lcd.print("v");
+          delay(2500);
+          lcd.clear();
+          lcd.setCursor(3,0);
+          lcd.print("Get Ready");
+          lcd.setCursor(5,1);
+          delay(500);
+          lcd.print(". ");
+          delay(500);
+          lcd.print(". ");
+          delay(500);
+          lcd.print(".");
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          Serial.println(randNumber);
+          delay(randNumber);
+          lcd.clear();
+          if (randNumber & 1 == 1)
+          {
+              digitalWrite(ledPin1, HIGH);
+              digitalWrite(ledPin2, LOW);
+              time1 = micros();
+              lcd.setCursor(3,0);
+              lcd.print("PUNCH IT!");
+              //Serial.println("ODD");
+              oddNumber = HIGH;
+          }
+          else
+          {
+              digitalWrite(ledPin1, LOW);
+              digitalWrite(ledPin2, HIGH);
+              time1 = micros();
+              lcd.setCursor(5,0);
+              lcd.print("BRAKE!");
+              //Serial.println("EVEN");
+              evenNumber = HIGH;
+          }
+          button3Pressed = LOW;
+          
+      }
+
+      reading3 = digitalRead(buttonPin3);         //read button3
+      
+      if(takeReading == HIGH)
+      {
+          if(oddNumber == HIGH)
+              reading1 = digitalRead(buttonPin1);
+          if(evenNumber == HIGH)    
+              reading2 = digitalRead(buttonPin2);
+      } 
+    
+      // If the switch changed, due to noise or pressing:
+      if (reading1 != lastButtonState1 || reading2 != lastButtonState2 || reading3 != lastButtonState3) 
+      {
+        // reset the debouncing timer
+        lastDebounceTime = micros();
+      }
+      
+      if ((micros() - lastDebounceTime) > debounceDelay) 
+      {
+          // whatever the reading is at, it's been there for longer
+          // than the debounce delay, so take it as the actual current state:
+          // if the button state has changed:
+          if (reading1 != buttonState1)
+          {
+                buttonState1 = reading1;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState1 == HIGH) 
+                {
+                  speeds[0] = ((lastDebounceTime - time1)/1000);
+                  printcount = 1;
+                  lcd.clear();
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 1;
+
+                }
+          }
+
+          if (reading2 != buttonState2)
+          {
+                buttonState2 = reading2;
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState2 == HIGH) 
+                {
+
+                  speeds[0] = ((lastDebounceTime - time1)/1000);
+                  printcount = 1;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 1;
+                  Serial.println("1");
+
+                }
+          }
+
+          if (reading3 != buttonState3)
+          {
+                buttonState3 = reading3;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState3 == HIGH) 
+                {
+                  Serial.print("READY TO GO");
+                  button3Pressed = HIGH;
+                  takeReading = HIGH;
+                }
+          }
+      }
+    
+      // save the reading.  Next time through the loop,
+      // it'll be the lastButtonState:
+      lastButtonState1 = reading1;
+      lastButtonState2 = reading2;
+      lastButtonState3 = reading3;
+    }
+  
+//NEW LOOP 
+  if(startLoop == 1){
+      Serial.println("2");
+      Serial.println(printcount);
+      if(printcount == 1)
+      {
+          lcd.clear();
+          Serial.println("3");
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          delay(500);
+          lcd.setCursor(5,0);
+          lcd.print("SHIFT");
+          printcount = 2;
+          takeReading = LOW;    // not to read button number 1 and 2
+          oddNumber = LOW;
+          evenNumber = LOW;
+      }
+      
+      if(button3Pressed == HIGH && fix == 1)
+      {
+          fix = 2;
+          lcd.clear();
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          Serial.println(randNumber);
+          delay(randNumber);
+          if (randNumber & 1 == 1)
+          {
+              digitalWrite(ledPin1, HIGH);
+              digitalWrite(ledPin2, LOW);
+              lcd.setCursor(3,0);
+              lcd.print("PUNCH IT!");
+              
+              time1 = micros();
+              //Serial.println("ODD");
+              oddNumber = HIGH;
+          }
+          else
+          {
+              digitalWrite(ledPin1, LOW);
+              digitalWrite(ledPin2, HIGH);
+              lcd.setCursor(5,0);
+              lcd.print("BRAKE!");
+              time1 = micros();
+              //Serial.println("EVEN");
+              evenNumber = HIGH;
+          }
+          button3Pressed = LOW;
+          
+      }
+
+      reading3 = digitalRead(buttonPin3);         //read button3
+      
+      if(takeReading == HIGH)
+      {
+          if(oddNumber == HIGH)
+              reading1 = digitalRead(buttonPin1);
+          if(evenNumber == HIGH)    
+              reading2 = digitalRead(buttonPin2);
+      } 
+    
+      // If the switch changed, due to noise or pressing:
+      if (reading1 != lastButtonState1 || reading2 != lastButtonState2 || reading3 != lastButtonState3) 
+      {
+        // reset the debouncing timer
+        lastDebounceTime = micros();
+      }
+      
+      if ((micros() - lastDebounceTime) > debounceDelay) 
+      {
+          // whatever the reading is at, it's been there for longer
+          // than the debounce delay, so take it as the actual current state:
+          // if the button state has changed:
+          if (reading1 != buttonState1)
+          {
+                buttonState1 = reading1;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState1 == HIGH) 
+                {
+                  speeds[1] = ((lastDebounceTime - time1)/1000);
+                  printcount = 2;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 2;
+                }
+          }
+
+          if (reading2 != buttonState2)
+          {
+                buttonState2 = reading2;
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState2 == HIGH) 
+                {
+                  speeds[1] = ((lastDebounceTime - time1)/1000);
+                  printcount = 2;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 2;
+                }
+          }
+
+          if (reading3 != buttonState3)
+          {
+                buttonState3 = reading3;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState3 == HIGH) 
+                {
+                  Serial.print("READY TO GO");
+                  button3Pressed = HIGH;
+                  takeReading = HIGH;
+                }
+          }
+      }
+    
+      // save the reading.  Next time through the loop,
+      // it'll be the lastButtonState:
+      lastButtonState1 = reading1;
+      lastButtonState2 = reading2;
+      lastButtonState3 = reading3;
+   } 
+  
+//NEW LOOP 
+  if(startLoop == 2){
+      Serial.println("2");
+      Serial.println(printcount);
+      if(printcount == 2)
+      {
+          lcd.clear();
+          Serial.println("3");
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          delay(500);
+          lcd.setCursor(5,0);
+          lcd.print("SHIFT");
+          printcount = 3;
+          takeReading = LOW;    // not to read button number 1 and 2
+          oddNumber = LOW;
+          evenNumber = LOW;
+      }
+      
+      if(button3Pressed == HIGH && fix == 2)
+      {
+          fix = 3;
+          lcd.clear();
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          Serial.println(randNumber);
+          delay(randNumber);
+          if (randNumber & 1 == 1)
+          {
+              digitalWrite(ledPin1, HIGH);
+              digitalWrite(ledPin2, LOW);
+              lcd.setCursor(3,0);
+              lcd.print("PUNCH IT!");
+              time1 = micros();
+              //Serial.println("ODD");
+              oddNumber = HIGH;
+          }
+          else
+          {
+              digitalWrite(ledPin1, LOW);
+              digitalWrite(ledPin2, HIGH);
+              lcd.setCursor(5,0);
+              lcd.print("BRAKE!");
+              
+              time1 = micros();
+              //Serial.println("EVEN");
+              evenNumber = HIGH;
+          }
+          button3Pressed = LOW;
+          
+      }
+
+      reading3 = digitalRead(buttonPin3);         //read button3
+      
+      if(takeReading == HIGH)
+      {
+          if(oddNumber == HIGH)
+              reading1 = digitalRead(buttonPin1);
+          if(evenNumber == HIGH)    
+              reading2 = digitalRead(buttonPin2);
+      } 
+    
+      // If the switch changed, due to noise or pressing:
+      if (reading1 != lastButtonState1 || reading2 != lastButtonState2 || reading3 != lastButtonState3) 
+      {
+        // reset the debouncing timer
+        lastDebounceTime = micros();
+      }
+      
+      if ((micros() - lastDebounceTime) > debounceDelay) 
+      {
+          // whatever the reading is at, it's been there for longer
+          // than the debounce delay, so take it as the actual current state:
+          // if the button state has changed:
+          if (reading1 != buttonState1)
+          {
+                buttonState1 = reading1;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState1 == HIGH) 
+                {
+                  speeds[2] = ((lastDebounceTime - time1)/1000);
+                  printcount = 3;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 3;
+                }
+          }
+
+          if (reading2 != buttonState2)
+          {
+                buttonState2 = reading2;
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState2 == HIGH) 
+                {
+                  speeds[2] = ((lastDebounceTime - time1)/1000);
+                  printcount = 3;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 3;
+                }
+          }
+
+          if (reading3 != buttonState3)
+          {
+                buttonState3 = reading3;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState3 == HIGH) 
+                {
+                  Serial.print("READY TO GO");
+                  button3Pressed = HIGH;
+                  takeReading = HIGH;
+                }
+          }
+      }
+    
+      // save the reading.  Next time through the loop,
+      // it'll be the lastButtonState:
+      lastButtonState1 = reading1;
+      lastButtonState2 = reading2;
+      lastButtonState3 = reading3;
+   } 
+  
+//NEW LOOP 
+  if(startLoop == 3){
+      Serial.println("2");
+      Serial.println(printcount);
+      if(printcount == 3)
+      {
+          lcd.clear();
+          Serial.println("3");
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          delay(500);
+          lcd.setCursor(5,0);
+          lcd.print("SHIFT");
+          printcount = 4;
+          takeReading = LOW;    // not to read button number 1 and 2
+          oddNumber = LOW;
+          evenNumber = LOW;
+      }
+      
+      if(button3Pressed == HIGH && fix == 3)
+      {
+          fix = 4;
+          lcd.clear();
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          Serial.println(randNumber);
+          delay(randNumber);
+          if (randNumber & 1 == 1)
+          {
+              digitalWrite(ledPin1, HIGH);
+              digitalWrite(ledPin2, LOW);
+              lcd.setCursor(3,0);
+              lcd.print("PUNCH IT!");
+              
+              time1 = micros();
+              //Serial.println("ODD");
+              oddNumber = HIGH;
+          }
+          else
+          {
+              digitalWrite(ledPin1, LOW);
+              digitalWrite(ledPin2, HIGH);
+              lcd.setCursor(5,0);
+              lcd.print("BRAKE!");
+              time1 = micros();
+              //Serial.println("EVEN");
+              evenNumber = HIGH;
+          }
+          button3Pressed = LOW;
+          
+      }
+
+      reading3 = digitalRead(buttonPin3);         //read button3
+      
+      if(takeReading == HIGH)
+      {
+          if(oddNumber == HIGH)
+              reading1 = digitalRead(buttonPin1);
+          if(evenNumber == HIGH)    
+              reading2 = digitalRead(buttonPin2);
+      } 
+    
+      // If the switch changed, due to noise or pressing:
+      if (reading1 != lastButtonState1 || reading2 != lastButtonState2 || reading3 != lastButtonState3) 
+      {
+        // reset the debouncing timer
+        lastDebounceTime = micros();
+      }
+      
+      if ((micros() - lastDebounceTime) > debounceDelay) 
+      {
+          // whatever the reading is at, it's been there for longer
+          // than the debounce delay, so take it as the actual current state:
+          // if the button state has changed:
+          if (reading1 != buttonState1)
+          {
+                buttonState1 = reading1;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState1 == HIGH) 
+                {
+                  speeds[3] = ((lastDebounceTime - time1)/1000);
+                  printcount = 4;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 4;
+                }
+          }
+
+          if (reading2 != buttonState2)
+          {
+                buttonState2 = reading2;
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState2 == HIGH) 
+                {
+                  speeds[3] = ((lastDebounceTime - time1)/1000);
+                  printcount = 4;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 4;
+                }
+          }
+
+          if (reading3 != buttonState3)
+          {
+                buttonState3 = reading3;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState3 == HIGH) 
+                {
+                  Serial.print("READY TO GO");
+                  button3Pressed = HIGH;
+                  takeReading = HIGH;
+                }
+          }
+      }
+    
+      // save the reading.  Next time through the loop,
+      // it'll be the lastButtonState:
+      lastButtonState1 = reading1;
+      lastButtonState2 = reading2;
+      lastButtonState3 = reading3;
+   } 
+  
+   //NEW LOOP 
+  if(startLoop == 4){
+      Serial.println("2");
+      Serial.println(printcount);
+      if(printcount == 4)
+      {
+          lcd.clear();
+          Serial.println("3");
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          delay(500);
+          lcd.setCursor(5,0);
+          lcd.print("SHIFT");
+          printcount = 5;
+          takeReading = LOW;    // not to read button number 1 and 2
+          oddNumber = LOW;
+          evenNumber = LOW;
+      }
+      
+      if(button3Pressed == HIGH && fix == 4)
+      {
+          fix = 5;
+          lcd.clear();
+          digitalWrite(ledPin1, LOW);
+          digitalWrite(ledPin2, LOW);
+          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          Serial.println(randNumber);
+          delay(randNumber);
+          if (randNumber & 1 == 1)
+          {
+              digitalWrite(ledPin1, HIGH);
+              digitalWrite(ledPin2, LOW);
+              lcd.setCursor(3,0);
+              lcd.print("PUNCH IT!");
+              time1 = micros();
+              //Serial.println("ODD");
+              oddNumber = HIGH;
+          }
+          else
+          {
+              digitalWrite(ledPin1, LOW);
+              digitalWrite(ledPin2, HIGH);
+              lcd.setCursor(5,0);
+              lcd.print("BRAKE!");
+              
+              time1 = micros();
+              //Serial.println("EVEN");
+              evenNumber = HIGH;
+          }
+          button3Pressed = LOW;
+          
+      }
+
+      reading3 = digitalRead(buttonPin3);         //read button3
+      
+      if(takeReading == HIGH)
+      {
+          if(oddNumber == HIGH)
+              reading1 = digitalRead(buttonPin1);
+          if(evenNumber == HIGH)    
+              reading2 = digitalRead(buttonPin2);
+      } 
+    
+      // If the switch changed, due to noise or pressing:
+      if (reading1 != lastButtonState1 || reading2 != lastButtonState2 || reading3 != lastButtonState3) 
+      {
+        // reset the debouncing timer
+        lastDebounceTime = micros();
+      }
+      
+      if ((micros() - lastDebounceTime) > debounceDelay) 
+      {
+          // whatever the reading is at, it's been there for longer
+          // than the debounce delay, so take it as the actual current state:
+          // if the button state has changed:
+          if (reading1 != buttonState1)
+          {
+                buttonState1 = reading1;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState1 == HIGH) 
+                {
+                  speeds[4] = ((lastDebounceTime - time1)/1000);
+                  printcount = 5;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 5;
+                }
+          }
+
+          if (reading2 != buttonState2)
+          {
+                buttonState2 = reading2;
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState2 == HIGH) 
+                {
+                  lcd.print((lastDebounceTime - time1)/1000);
+                  speeds[4] = ((lastDebounceTime - time1)/1000);
+                  printcount = 5;
+                  digitalWrite(ledPin1, LOW);
+                  digitalWrite(ledPin2, LOW);
+                  startLoop = 5;
+                }
+          }
+
+          if (reading3 != buttonState3)
+          {
+                buttonState3 = reading3;
+                
+                // only toggle the LED if the new button state is HIGH
+                if (buttonState3 == HIGH) 
+                {
+                  Serial.print("READY TO GO");
+                  button3Pressed = HIGH;
+                  takeReading = HIGH;
+                }
+          }
+      }
+    
+      // save the reading.  Next time through the loop,
+      // it'll be the lastButtonState:
+      lastButtonState1 = reading1;
+      lastButtonState2 = reading2;
+      lastButtonState3 = reading3;
+   } 
+   
+    if(startLoop == 5){
+      lcd.clear();
+      for(int i = 0; i < 5; i++){
+        avgSpeed += speeds[i];
+      }
+      for(int i = 0; i < 5; i++){
+        Serial.println(speeds[i]);
+      }
+      
+      Serial.println(avgSpeed/5);
+      lcd.print("Your reaction");
+      lcd.setCursor(0,1);
+      lcd.print("time is: ");
+      lcd.print(avgSpeed/5);
+      lcd.print(" ms");
+      delay(3000);
+      lcd.clear();
+      startLoop = 0;
+      printcount = 0;
+      fix = 0;
+  }
+
+}
