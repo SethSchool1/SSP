@@ -153,7 +153,7 @@ void loop()
           lcd.print(".");
           digitalWrite(ledPin1, LOW);
           digitalWrite(ledPin2, LOW);
-          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          randNumber = random(minRandomNumber,maxRandomNumber); 
           Serial.println(randNumber);
           delay(randNumber);
           lcd.clear();
@@ -283,7 +283,7 @@ void loop()
           lcd.clear();
           digitalWrite(ledPin1, LOW);
           digitalWrite(ledPin2, LOW);
-          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          randNumber = random(minRandomNumber,maxRandomNumber); 
           Serial.println(randNumber);
           delay(randNumber);
           if (randNumber & 1 == 1)
@@ -330,9 +330,7 @@ void loop()
       
       if ((micros() - lastDebounceTime) > debounceDelay) 
       {
-          // whatever the reading is at, it's been there for longer
-          // than the debounce delay, so take it as the actual current state:
-          // if the button state has changed:
+     
           if (reading1 != buttonState1)
           {
                 buttonState1 = reading1;
@@ -408,7 +406,7 @@ void loop()
           lcd.clear();
           digitalWrite(ledPin1, LOW);
           digitalWrite(ledPin2, LOW);
-          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          randNumber = random(minRandomNumber,maxRandomNumber); 
           Serial.println(randNumber);
           delay(randNumber);
           if (randNumber & 1 == 1)
@@ -533,7 +531,7 @@ void loop()
           lcd.clear();
           digitalWrite(ledPin1, LOW);
           digitalWrite(ledPin2, LOW);
-          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          randNumber = random(minRandomNumber,maxRandomNumber); 
           Serial.println(randNumber);
           delay(randNumber);
           if (randNumber & 1 == 1)
@@ -580,9 +578,7 @@ void loop()
       
       if ((micros() - lastDebounceTime) > debounceDelay) 
       {
-          // whatever the reading is at, it's been there for longer
-          // than the debounce delay, so take it as the actual current state:
-          // if the button state has changed:
+
           if (reading1 != buttonState1)
           {
                 buttonState1 = reading1;
@@ -658,7 +654,7 @@ void loop()
           lcd.clear();
           digitalWrite(ledPin1, LOW);
           digitalWrite(ledPin2, LOW);
-          randNumber = random(minRandomNumber,maxRandomNumber); //in our code we have kept them as 2000 to 5000
+          randNumber = random(minRandomNumber,maxRandomNumber); 
           Serial.println(randNumber);
           delay(randNumber);
           if (randNumber & 1 == 1)
@@ -705,9 +701,7 @@ void loop()
       
       if ((micros() - lastDebounceTime) > debounceDelay) 
       {
-          // whatever the reading is at, it's been there for longer
-          // than the debounce delay, so take it as the actual current state:
-          // if the button state has changed:
+
           if (reading1 != buttonState1)
           {
                 buttonState1 = reading1;
